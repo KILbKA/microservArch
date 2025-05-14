@@ -45,7 +45,7 @@ export default {
 
       const { data, error } = await supabase
         .storage
-        .from('test')                // ваше имя бакета
+        .from('test')                //  имя бакета
         .upload(fileName, this.selectedFile)
 
       console.log('upload result:', { data, error })
@@ -60,7 +60,7 @@ export default {
     async fetchFiles() {
       const { data, error } = await supabase
         .storage
-        .from('test')                // ваше имя бакета
+        .from('test')                //  имя бакета
         .list('', { limit: 100 })
 
       console.log('list result:', { data, error })

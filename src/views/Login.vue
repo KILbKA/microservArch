@@ -1,4 +1,4 @@
-<!-- src/views/Login.vue -->
+
 <template>
     <div>
       <h1>Авторизация / Регистрация</h1>

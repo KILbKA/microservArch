@@ -1,4 +1,4 @@
-<!-- src/App.vue -->
+
 <template>
   <header>
     <nav>
@@ -20,7 +20,7 @@ export default {
 </script>
 
 <style>
-/* Примеры простых стилей */
+
 header {
   background: #eee;
   padding: 1rem;

@@ -1,14 +1,14 @@
 
 <template>
     <div>
-      <h1>Home Page</h1>
+      <h1>Главное меню</h1>
       <p v-if="user">Привет, {{ user.email }}!</p>
       <p v-else>Вы не авторизованы. Пожалуйста, <router-link to="/login">войдите</router-link>.</p>
     </div>
   </template>
   
   <script>
-  import { supabase } from '../lib/supabase.js'
+  import { supabase } from '../supabase/supabase.js'
   
   export default {
     data() {

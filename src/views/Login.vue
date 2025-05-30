@@ -3,8 +3,8 @@
     <div>
       <h1>Авторизация / Регистрация</h1>
       <div>
-        <input v-model="email" placeholder="Email" />
-        <input v-model="password" type="password" placeholder="Пароль" />
+        <input v-model="email" type="email" placeholder="Email" required/>
+        <input v-model="password" type="password" placeholder="Пароль" required/>
       </div>
       <button @click="signUp">Зарегистрироваться</button>
       <button @click="signIn">Войти</button>
@@ -12,7 +12,7 @@
   </template>
   
   <script>
-  import { supabase } from '../lib/supabase.js'
+  import { supabase } from '../supabase/supabase.js'
   
   export default {
     data() {
@@ -42,6 +42,8 @@
           })
           if (error) throw error
           alert('Вход выполнен!')
+          this.$router.push('/')
+
         } catch (error) {
           alert(`Ошибка входа: ${error.message}`)
         }

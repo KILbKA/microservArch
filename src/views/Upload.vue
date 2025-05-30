@@ -3,31 +3,28 @@
     <h1>Загрузить файл</h1>
     <input type="file" @change="handleFileSelect" />
     <button @click="uploadFile">Загрузить</button>
-
-    <hr/>
-
-    <h2>Список файлов</h2>
-    <ul>
-      <li v-for="file in files" :key="file.name">
-        <a :href="getPublicUrl(file.name)" target="_blank">
-          {{ file.name }}
-        </a>
-      </li>
-    </ul>
   </div>
 </template>
 
 <script>
-import { supabase } from '../lib/supabase.js'
+import { supabase } from '../supabase/supabase.js'
 
 export default {
   data() {
     return {
       selectedFile: null,
-      files: []
+      files: [],
+      userId: null
     }
   },
   async mounted() {
+    const { data, error } = await supabase.auth.getUser()
+    if (error || !data.user) {
+      alert('Ошибка получения пользователя или пользователь не найден')
+      return this.$router.push('/login')
+    }
+
+    this.userId = data.user.id
     await this.fetchFiles()
   },
   methods: {
@@ -41,40 +38,21 @@ export default {
       }
 
       const fileName = `${Date.now()}_${this.selectedFile.name}`
-      console.log('uploading:', fileName)
+      const filePath = `${this.userId}/${fileName}`
 
       const { data, error } = await supabase
         .storage
-        .from('test')                //  имя бакета
-        .upload(fileName, this.selectedFile)
+        .from('test')
+        .upload(filePath, this.selectedFile)
 
       console.log('upload result:', { data, error })
       if (error) {
         return alert('Ошибка загрузки: ' + error.message)
       }
 
-      alert('Файл загружен: ' + fileName)
+      alert('Файл успешно загружен!')
       this.selectedFile = null
-      await this.fetchFiles()
     },
-    async fetchFiles() {
-      const { data, error } = await supabase
-        .storage
-        .from('test')                //  имя бакета
-        .list('', { limit: 100 })
-
-      console.log('list result:', { data, error })
-      if (error) {
-        return console.error('Ошибка получения списка файлов:', error)
-      }
-      this.files = data
-    },
-    getPublicUrl(name) {
-      return supabase
-        .storage
-        .from('test')
-        .getPublicUrl(name).data.publicUrl
-    }
   }
 }
 </script>

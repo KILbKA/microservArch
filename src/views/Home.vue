@@ -1,26 +1,44 @@
-
 <template>
-    <div>
-      <h1>Главное меню</h1>
-      <p v-if="user">Привет, {{ user.email }}!</p>
-      <p v-else>Вы не авторизованы. Пожалуйста, <router-link to="/login">войдите</router-link>.</p>
+  <div class="home-container">
+    <h1>Добро пожаловать</h1>
+    <div v-if="!user">
+      <p>Пожалуйста, <router-link to="/login">войдите</router-link> или 
+         <router-link to="/signup">зарегистрируйтесь</router-link>, чтобы продолжить.</p>
     </div>
-  </template>
-  
-  <script>
-  import { supabase } from '../supabase/supabase.js'
-  
-  export default {
-    data() {
-      return {
-        user: null
-      }
+    <div v-else>
+      <p>Вы вошли как <strong>{{ userEmail }}</strong>.</p>
+      <p>
+        <router-link to="/upload">Загрузить изображение</router-link> или 
+        <router-link to="/download">Скачать изображение</router-link>.
+      </p>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'Home',
+  computed: {
+    user() {
+      return !!localStorage.getItem('access_token')
     },
-    async mounted() {
-      // Получаем текущую сессию при загрузке страницы
-      const { data } = await supabase.auth.getSession()
-      this.user = data.session?.user || null
+    userEmail() {
+      return localStorage.getItem('user_email') || 'неизвестный'
     }
   }
-  </script>
-  
+}
+</script>
+
+<style scoped>
+.home-container {
+  max-width: 600px;
+  margin: 2rem auto;
+  text-align: center;
+}
+h1 {
+  margin-bottom: 1.5rem;
+}
+p {
+  font-size: 1.1rem;
+}
+</style>

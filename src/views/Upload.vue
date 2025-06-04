@@ -1,58 +1,94 @@
 <template>
-  <div>
-    <h1>Загрузить файл</h1>
-    <input type="file" @change="handleFileSelect" />
-    <button @click="uploadFile">Загрузить</button>
+  <div class="upload-container">
+    <h2>Загрузка изображения</h2>
+    <input type="file" @change="onFileChange" />
+    <button @click="uploadFile" :disabled="!selectedFile">Загрузить</button>
+    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+    <p v-if="successMessage" class="success">{{ successMessage }}</p>
   </div>
 </template>
 
 <script>
-import { supabase } from '../supabase/supabase.js'
-
 export default {
+  name: 'Upload',
   data() {
     return {
       selectedFile: null,
-      files: [],
-      userId: null
+      errorMessage: '',
+      successMessage: ''
     }
-  },
-  async mounted() {
-    const { data, error } = await supabase.auth.getUser()
-    if (error || !data.user) {
-      alert('Ошибка получения пользователя или пользователь не найден')
-      return this.$router.push('/login')
-    }
-
-    this.userId = data.user.id
-    await this.fetchFiles()
   },
   methods: {
-    handleFileSelect(e) {
-      this.selectedFile = e.target.files[0]
-      console.log('selectedFile:', this.selectedFile)
+    onFileChange(event) {
+      this.selectedFile = event.target.files[0]
+      this.errorMessage = ''
+      this.successMessage = ''
     },
     async uploadFile() {
+      this.errorMessage = ''
+      this.successMessage = ''
       if (!this.selectedFile) {
-        return alert('Сначала выберите файл!')
+        this.errorMessage = 'Выберите файл для загрузки'
+        return
       }
 
-      const fileName = `${Date.now()}_${this.selectedFile.name}`
-      const filePath = `${this.userId}/${fileName}`
-
-      const { data, error } = await supabase
-        .storage
-        .from('test')
-        .upload(filePath, this.selectedFile)
-
-      console.log('upload result:', { data, error })
-      if (error) {
-        return alert('Ошибка загрузки: ' + error.message)
+      const token = localStorage.getItem('access_token')
+      if (!token) {
+        // Если вдруг токена нет, перенаправляем на /login
+        this.$router.push('/login')
+        return
       }
 
-      alert('Файл успешно загружен!')
-      this.selectedFile = null
-    },
+      const formData = new FormData()
+      formData.append('file', this.selectedFile)
+
+      try {
+        // Предположим, ваш File‐сервис слушает http://localhost:4000
+        const response = await fetch('http://localhost:4000/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        })
+        const result = await response.json()
+
+        if (!response.ok) {
+          this.errorMessage = result.error || 'Ошибка загрузки файла'
+          return
+        }
+        // File‐сервис вернёт { fileKey, publicUrl }
+        this.successMessage = `Файл "${this.selectedFile.name}" успешно загружен. 
+          <br> URL: <a :href="result.publicUrl" target="_blank">${result.publicUrl}</a>`
+      } catch (e) {
+        console.error('Ошибка при вызове File‐сервиса:', e)
+        this.errorMessage = 'Не удалось связаться с сервером загрузки'
+      }
+    }
   }
 }
 </script>
+
+<style scoped>
+.upload-container {
+  max-width: 500px;
+  margin: 2rem auto;
+  text-align: center;
+}
+input[type="file"] {
+  margin-bottom: 1rem;
+}
+button {
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+  font-size: 1rem;
+}
+.error {
+  color: red;
+  margin-top: 1rem;
+}
+.success {
+  color: green;
+  margin-top: 1rem;
+}
+</style>

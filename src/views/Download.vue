@@ -1,87 +1,61 @@
 <template>
-  <div>
-    <h1>Ваши изображения</h1>
-    <ul>
-      <li v-for="file in files" :key="file.name">
-        <img :src="getPublicUrl(file.name)" :alt="file.name" width="120" />
-        <button @click="downloadFile(file.name)" class="icon-btn" title="Скачать"><Download size="20" color="green"/></button>
-        <button @click="deleteFile(file.name)" class="icon-btn" title="Удалить"><Trash size="20" color="red"/></button>
-      </li>
-    </ul>
+  <div class="download-container">
+    <h2>Скачать изображение</h2>
+    <input v-model="fileKey" placeholder="Введите fileKey" />
+    <button @click="downloadFile">Скачать</button>
+    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
   </div>
 </template>
 
 <script>
-import { supabase } from '../supabase/supabase.js'
-import { Download, Trash } from 'lucide-vue-next'
-
 export default {
+  name: 'Download',
   data() {
     return {
-      files: [],
-      userId: null
+      fileKey: '',
+      errorMessage: ''
     }
   },
-  async mounted() {
-    const { data, error } = await supabase.auth.getUser()
-    if (error || !data?.user) {
-      alert('Не авторизован. Переход на /login')
-      return this.$router.push('/login')
-    }
-
-    this.userId = data.user.id
-    await this.fetchFiles()
-  },
-  components: { Download, Trash },
   methods: {
-    async fetchFiles() {
-      if (!this.userId) return
-
-      const { data, error } = await supabase
-        .storage
-        .from('test')
-        .list(this.userId, { limit: 100 })
-
-      if (!error) {
-        this.files = data
-      } else {
-        console.error('Ошибка получения файлов:', error.message)
-      }
-    },
-    getPublicUrl(name) {
-      return supabase
-        .storage
-        .from('test')
-        .getPublicUrl(`${this.userId}/${name}`).data.publicUrl
-    },
-    async downloadFile(name) {
-      const { data, error } = await supabase
-        .storage
-        .from('test')
-        .download(`${this.userId}/${name}`)
-
-      if (error) {
-        alert('Ошибка скачивания: ' + error.message)
+    async downloadFile() {
+      this.errorMessage = ''
+      if (!this.fileKey) {
+        this.errorMessage = 'Введите fileKey'
         return
       }
-      const url = URL.createObjectURL(data)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = name
-      a.click()
-      URL.revokeObjectURL(url)
-    },
-    async deleteFile(name) {
-      const { error } = await supabase
-        .storage
-        .from('test')
-        .remove([`${this.userId}/${name}`])
 
-      if (error) {
-        alert('Ошибка удаления: ' + error.message)
-      } else {
-        alert('Файл удалён!')
-        await this.fetchFiles()
+      const token = localStorage.getItem('access_token')
+      if (!token) {
+        this.$router.push('/login')
+        return
+      }
+
+      try {
+        // File‐сервис отдаёт redirect на signedUrl или проксирует blob
+        const response = await fetch(`http://localhost:4000/download/${this.fileKey}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        if (!response.ok) {
+          const result = await response.json()
+          this.errorMessage = result.error || 'Ошибка при скачивании'
+          return
+        }
+
+        // Предположим, File‐сервис проксирует файл как blob
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = this.fileKey
+        a.click()
+        window.URL.revokeObjectURL(url)
+      } catch (e) {
+        console.error('Ошибка при вызове File‐сервиса:', e)
+        this.errorMessage = 'Не удалось связаться с сервером скачивания'
       }
     }
   }
@@ -89,42 +63,25 @@ export default {
 </script>
 
 <style scoped>
-h1 {
+.download-container {
+  max-width: 500px;
+  margin: 2rem auto;
+  text-align: center;
+}
+input {
+  display: block;
+  width: 100%;
   margin-bottom: 1rem;
-  color: #212529;
+  padding: 0.6rem;
+  font-size: 1rem;
 }
-ul {
-  list-style: none;
-  padding-left: 0;
-}
-li {
-  margin-bottom: 0.75rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-a {
-  color: #0d6efd;
-  text-decoration: none;
-  flex-grow: 1;
-}
-span {
-  flex-grow: 1;
-  padding: 0 0.5rem;
-  overflow-wrap: anywhere;
-}
-a:hover {
-  text-decoration: underline;
-}
-.icon-btn {
-  background: none;
-  border: none;
-  font-size: 1.2rem;
+button {
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
   cursor: pointer;
-  padding: 0.2rem;
-  transition: transform 0.2s;
 }
-.icon-btn:hover {
-  transform: scale(1.2);
+.error {
+  color: red;
+  margin-top: 1rem;
 }
 </style>

@@ -1,124 +1,67 @@
 <template>
-  <header>
-    <nav>
-      <router-link to="/">Главное меню</router-link>
-      <router-link to="/login" v-if="!user">Вход</router-link>
-      <router-link to="/upload" v-if="user">Загрузка изображения</router-link>
-      <router-link to="/download" v-if="user">Скачать изображения</router-link>
-      <button v-if="user" @click="logout">Выйти</button>
-    </nav>
-  </header>
-  <main>
-    <router-view />
-  </main>
+  <div id="app">
+    <header>
+      <nav>
+        <router-link to="/">Главное меню</router-link>
+        <router-link v-if="!user" to="/login">Вход</router-link>
+        <router-link v-if="!user" to="/signup">Регистрация</router-link>
+        <router-link v-if="user" to="/upload">Загрузка изображения</router-link>
+        <router-link v-if="user" to="/download">Скачать изображения</router-link>
+        <button v-if="user" @click="logout">Выйти</button>
+      </nav>
+    </header>
+    <main>
+      <router-view />
+    </main>
+  </div>
 </template>
 
 <script>
-import { supabase } from './supabase/supabase'
-
 export default {
   name: 'App',
-  data() {
-    return {
-      user: null
+  computed: {
+    // Считаем, что пользователь авторизован, если есть access_token в localStorage
+    user() {
+      return !!localStorage.getItem('access_token')
     }
   },
-  async mounted() {
-    const { data } = await supabase.auth.getSession()
-    this.user = data.session?.user || null
-
-    supabase.auth.onAuthStateChange((event, session) => {
-      this.user = session?.user || null
-    })
-  },
   methods: {
-    async logout() {
-      await supabase.auth.signOut()
-      this.user = null
+    logout() {
+      // Удаляем токены и перенаправляем на страницу входа
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
       this.$router.push('/login')
     }
   }
 }
 </script>
 
-<style>
-body {
-  margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f8f9fa;
-  color: #333;
-}
-
+<style scoped>
 header {
-  background: #343a40;
+  background-color: #1a1a1a;
   padding: 1rem;
 }
-
 nav {
   display: flex;
-  align-items: center;
   gap: 1rem;
+  align-items: center;
 }
-
 nav a {
-  color: #fff;
+  color: #ffffff;
   text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  transition: background 0.3s;
 }
-
-nav a.router-link-active {
-  background: #495057;
-}
-
-nav a:hover {
-  background: #495057;
-}
-
-button {
-  background-color: #198754;
-  color: white;
+nav button {
+  background-color: #e74c3c;
+  color: #fff;
   border: none;
   padding: 0.5rem 1rem;
-  margin-right: 1rem;
-  border-radius: 6px;
   cursor: pointer;
-  transition: background 0.3s;
+  border-radius: 4px;
 }
-
-button:hover {
-  background-color: #157347;
+nav button:hover {
+  background-color: #c0392b;
 }
-
 main {
   padding: 2rem;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="file"] {
-  display: block;
-  width: 40%;
-  padding: 0.5rem;
-  margin: 0.5rem 0 1rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 1rem;
-}
-
-h1, h2 {
-  color: #212529;
-}
-
-ul {
-  padding-left: 1rem;
-}
-
-li {
-  margin-bottom: 0.5rem;
 }
 </style>

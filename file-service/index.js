@@ -6,6 +6,7 @@ import multer from 'multer'
 import path from 'path'
 import { supabase } from './supabaseClient.js'
 import { authMiddleware } from './authMiddleware.js'
+import amqp from 'amqplib'
 
 dotenv.config()
 
@@ -80,7 +81,6 @@ app.post(
         // return res.json({ fileKey, signedUrl: signedData.signedUrl });
         return res.status(500).json({ error: urlError.message })
       }
-
       return res.status(201).json({
         fileKey,
         publicUrl: publicURL
@@ -135,6 +135,29 @@ app.get(
     }
   }
 )
+
+async function listenToUserCreated() {
+  try {
+    const conn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://localhost')
+    const ch = await conn.createChannel()
+    const queue = 'user.created'
+    await ch.assertQueue(queue, { durable: true })
+
+    ch.consume(queue, async (msg) => {
+      if (msg !== null) {
+        const user = JSON.parse(msg.content.toString())
+        console.log('Received new user event in file-service:', user)
+        // Здесь можно создать папку в бакете или записать в лог
+        ch.ack(msg)
+      }
+    })
+  } catch (e) {
+    console.error('Error subscribing to RabbitMQ:', e)
+  }
+}
+
+listenToUserCreated()
+
 
 app.listen(PORT, () => {
   console.log(`File-service running on port ${PORT}`)

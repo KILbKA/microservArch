@@ -5,6 +5,8 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import { supabase } from './supabaseClient.js'
 import { authMiddleware } from './authMiddleware.js'
+import amqp from 'amqplib'
+
 
 dotenv.config()
 
@@ -25,6 +27,19 @@ app.use(cors({
 
 app.use(express.json())
 
+async function publishUserCreatedEvent(user) {
+  try {
+    const conn = await amqp.connect(process.env.RABBITMQ_URL)
+    const ch = await conn.createChannel()
+    const queue = 'user.created'
+    await ch.assertQueue(queue, { durable: true })
+    ch.sendToQueue(queue, Buffer.from(JSON.stringify(user)), { persistent: true })
+    setTimeout(() => conn.close(), 500) // Даем отправить сообщение
+  } catch (err) {
+    console.error('[auth-service] RabbitMQ publish error:', err)
+  }
+}
+
 /**
  * POST /signin
  * Принимает JSON { email, password }
@@ -41,6 +56,10 @@ app.post('/signin', async (req, res) => {
     if (error) {
       return res.status(401).json({ error: error.message })
     }
+    await publishUserCreatedEvent({
+      id: data.user.id,
+      email: data.user.email
+    })
     // Возвращаем только необходимые поля
     return res.json({
       access_token: data.session.access_token,

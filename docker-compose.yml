@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./auth-service/.env
+    depends_on:
+      - rabbitmq
+
+  file-service:
+    build: ./file-service
+    container_name: file-service
+    ports:
+      - "4000:4000"
+    env_file:
+      - ./file-service/.env
+    depends_on:
+      - rabbitmq
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - auth-service
+      - file-service
+    command: npm run dev

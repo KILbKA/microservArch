@@ -137,23 +137,32 @@ app.get(
 )
 
 async function listenToUserCreated() {
-  try {
-    const conn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://localhost')
-    const ch = await conn.createChannel()
-    const queue = 'user.created'
-    await ch.assertQueue(queue, { durable: true })
+  let conn, ch
 
-    ch.consume(queue, async (msg) => {
-      if (msg !== null) {
-        const user = JSON.parse(msg.content.toString())
-        console.log('Received new user event in file-service:', user)
-        // Здесь можно создать папку в бакете или записать в лог
-        ch.ack(msg)
-      }
-    })
-  } catch (e) {
-    console.error('Error subscribing to RabbitMQ:', e)
+  async function connect() {
+    try {
+      conn = await amqp.connect(process.env.RABBITMQ_URL)
+      ch = await conn.createChannel()
+      await ch.assertQueue('user.created', { durable: true })
+
+      ch.consume('user.created', (msg) => {
+        if (msg) {
+          console.log('New user:', JSON.parse(msg.content.toString()))
+          ch.ack(msg)
+        }
+      })
+
+      conn.on('close', () => {
+        console.log('RabbitMQ connection closed, reconnecting...')
+        setTimeout(connect, 5000) // Переподключение через 5 сек
+      })
+    } catch (err) {
+      console.error('RabbitMQ error:', err.message)
+      setTimeout(connect, 5000) // Повторная попытка
+    }
   }
+
+  await connect()
 }
 
 listenToUserCreated()

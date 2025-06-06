@@ -136,6 +136,31 @@ app.get(
   }
 )
 
+app.get('/files', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    // Получаем список файлов из Supabase Storage
+    const { data, error } = await supabase
+      .storage
+      .from(BUCKET)
+      .list(`${userId}/`); // Ищем в папке пользователя
+
+    if (error) throw error;
+
+    // Добавляем публичные URL к каждому файлу
+    const files = data.map(file => ({
+      name: file.name,
+      url: supabase.storage.from(BUCKET).getPublicUrl(`${userId}/${file.name}`).publicURL
+    }));
+
+    res.json(files);
+  } catch (e) {
+    console.error('GET /files error:', e);
+    res.status(500).json({ error: 'Failed to get files' });
+  }
+});
+
 async function listenToUserCreated() {
   let conn, ch
 

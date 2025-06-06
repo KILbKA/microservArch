@@ -58,8 +58,8 @@ export default {
           return
         }
         // File‐сервис вернёт { fileKey, publicUrl }
-        this.successMessage = `Файл "${this.selectedFile.name}" успешно загружен. 
-          <br> URL: <a :href="result.publicUrl" target="_blank">${result.publicUrl}</a>`
+        this.successMessage = `Файл "${this.selectedFile.name}" успешно загружен!`;
+        this.$emit('file-uploaded');
       } catch (e) {
         console.error('Ошибка при вызове File‐сервиса:', e)
         this.errorMessage = 'Не удалось связаться с сервером загрузки'

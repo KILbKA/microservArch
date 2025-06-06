@@ -1,61 +1,76 @@
 <template>
-  <div class="download-container">
-    <h2>Скачать изображение</h2>
-    <input v-model="fileKey" placeholder="Введите fileKey" />
-    <button @click="downloadFile">Скачать</button>
+  <div class="files-container">
+    <h2>Мои файлы</h2>
+    
+    <div v-if="loading" class="loading">Загрузка списка файлов...</div>
+    
+    <div v-else>
+      <div v-if="files.length === 0" class="empty">
+        У вас пока нет загруженных файлов
+      </div>
+      
+      <ul v-else class="file-list">
+        <li v-for="file in files" :key="file.name" class="file-item">
+          <span>{{ file.name }}</span>
+          <button @click="downloadFile(file)">Скачать</button>
+        </li>
+      </ul>
+    </div>
+    
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
   </div>
 </template>
 
 <script>
 export default {
-  name: 'Download',
+  name: 'FileList',
   data() {
     return {
-      fileKey: '',
+      files: [],
+      loading: false,
       errorMessage: ''
     }
   },
+  async created() {
+    await this.loadFiles();
+  },
   methods: {
-    async downloadFile() {
-      this.errorMessage = ''
-      if (!this.fileKey) {
-        this.errorMessage = 'Введите fileKey'
-        return
-      }
-
-      const token = localStorage.getItem('access_token')
+    async loadFiles() {
+      this.loading = true;
+      this.errorMessage = '';
+      
+      const token = localStorage.getItem('access_token');
       if (!token) {
-        this.$router.push('/login')
-        return
+        this.$router.push('/login');
+        return;
       }
 
       try {
-        // File‐сервис отдаёт redirect на signedUrl или проксирует blob
-        const response = await fetch(`http://localhost:4000/download/${this.fileKey}`, {
-          method: 'GET',
+        const response = await fetch('http://localhost:4000/files', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
-        })
+        });
 
         if (!response.ok) {
-          const result = await response.json()
-          this.errorMessage = result.error || 'Ошибка при скачивании'
-          return
+          throw new Error('Ошибка загрузки списка файлов');
         }
 
-        // Предположим, File‐сервис проксирует файл как blob
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = this.fileKey
-        a.click()
-        window.URL.revokeObjectURL(url)
+        this.files = await response.json();
       } catch (e) {
-        console.error('Ошибка при вызове File‐сервиса:', e)
-        this.errorMessage = 'Не удалось связаться с сервером скачивания'
+        console.error('Ошибка:', e);
+        this.errorMessage = 'Не удалось загрузить список файлов';
+      } finally {
+        this.loading = false;
+      }
+    },
+    async downloadFile(file) {
+      try {
+        // Просто открываем URL в новой вкладке
+        window.open(file.url, '_blank');
+      } catch (e) {
+        console.error('Ошибка скачивания:', e);
+        this.errorMessage = 'Не удалось скачать файл';
       }
     }
   }
@@ -63,25 +78,41 @@ export default {
 </script>
 
 <style scoped>
-.download-container {
-  max-width: 500px;
+.files-container {
+  max-width: 600px;
   margin: 2rem auto;
+}
+
+.loading, .empty {
+  padding: 1rem;
   text-align: center;
+  color: #666;
 }
-input {
-  display: block;
-  width: 100%;
-  margin-bottom: 1rem;
-  padding: 0.6rem;
-  font-size: 1rem;
+
+.file-list {
+  list-style: none;
+  padding: 0;
 }
-button {
-  padding: 0.6rem 1.2rem;
-  font-size: 1rem;
+
+.file-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem;
+  border-bottom: 1px solid #eee;
+}
+
+.file-item button {
+  padding: 0.3rem 0.8rem;
+  background: #42b983;
+  color: white;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
 }
+
 .error {
-  color: red;
-  margin-top: 1rem;
+  color: #ff4444;
+  text-align: center;
 }
 </style>
